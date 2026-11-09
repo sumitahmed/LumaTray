@@ -1,0 +1,575 @@
+import { Theme } from "theme.slint";
+import { MonitorIcon, SunIcon, LinkIcon, GearIcon, RefreshIcon, ArrowLeftIcon } from "icons.slint";
+import { FluentSlider } from "slider.slint";
+import { MonitorCard, DisplayItem } from "monitor_card.slint";
+
+export { DisplayItem, Theme }
+
+component FluentToggle inherits Rectangle {
+    in property <bool> checked: false;
+    callback toggled(bool);
+
+    width: 44px;
+    height: 22px;
+    border-radius: 11px;
+    background: root.checked ? Theme.accent : Theme.control-bg;
+    border-width: 1px;
+    border-color: root.checked ? Theme.accent : Theme.card-border;
+    animate background { duration: 150ms; }
+
+    thumb := Rectangle {
+        x: root.checked ? (parent.width - self.width - 4px) : 4px;
+        y: (parent.height - self.height) / 2;
+        width: 14px;
+        height: 14px;
+        border-radius: 7px;
+        background: root.checked ? (Theme.is-dark ? #000000 : #ffffff) : (Theme.is-dark ? #ffffff : #555555);
+        animate x { duration: 150ms; easing: ease-out; }
+    }
+
+    TouchArea {
+        width: 100%;
+        height: 100%;
+        clicked => {
+            root.toggled(!root.checked);
+        }
+    }
+}
+
+export component MainWindow inherits Window {
+    title: "LumaTray";
+    no-frame: true;
+    always-on-top: true;
+    background: Theme.background;
+    default-font-family: "Segoe UI Variable Text";
+
+    width: 380px;
+    height: container.preferred-height;
+
+    in-out property <bool> is-dark <=> Theme.is-dark;
+    in-out property <[DisplayItem]> displays: [];
+    in-out property <bool> sync-enabled: false;
+    in-out property <int> master-brightness: 75;
+    in property <string> status-text: "Ready";
+    in-out property <bool> show-settings: false;
+    in property <bool> autostart-enabled: false;
+    in-out property <string> app-theme: "system";
+
+    callback master-brightness-changed(int);
+    callback monitor-brightness-changed(string, int);
+    callback toggle-sync-master();
+    callback toggle-monitor-link(string);
+    callback refresh-clicked();
+    callback toggle-autostart(bool);
+    callback theme-changed(string);
+    callback drag-window();
+
+    container := Rectangle {
+        border-radius: Theme.radius-window;
+        border-width: 1px;
+        border-color: Theme.flyout-border;
+        background: transparent;
+        clip: true;
+
+        VerticalLayout {
+            padding-left: 14px;
+            padding-right: 14px;
+            padding-top: 14px;
+            padding-bottom: 14px;
+            spacing: 12px;
+
+            // ==================== SETTINGS VIEW ====================
+            if root.show-settings : VerticalLayout {
+                spacing: 12px;
+
+                // Header
+                HorizontalLayout {
+                    spacing: 8px;
+                    cross-axis-alignment: center;
+
+                    Rectangle {
+                        width: 30px;
+                        height: 30px;
+                        border-radius: Theme.radius-control;
+                        background: back-touch.has-hover ? Theme.control-hover : transparent;
+                        animate background { duration: 100ms; }
+
+                        ArrowLeftIcon {
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                            icon-size: 16px;
+                            icon-color: Theme.text-primary;
+                        }
+
+                        Tooltip { text: @markdown("Back to Brightness"); }
+
+                        back-touch := TouchArea {
+                            width: 100%;
+                            height: 100%;
+                            clicked => { root.show-settings = false; }
+                        }
+                    }
+
+                    Text {
+                        horizontal-stretch: 1;
+                        text: "Settings";
+                        font-size: 16px;
+                        font-weight: 700;
+                        color: Theme.text-primary;
+                        vertical-alignment: center;
+                    }
+                }
+
+                // 1. Startup Preference Card
+                Rectangle {
+                    border-radius: Theme.radius-card;
+                    background: Theme.card-bg;
+                    border-width: 1px;
+                    border-color: Theme.card-border;
+
+                    VerticalLayout {
+                        padding: 14px;
+                        spacing: 4px;
+
+                        HorizontalLayout {
+                            cross-axis-alignment: center;
+
+                            VerticalLayout {
+                                horizontal-stretch: 1;
+                                spacing: 2px;
+
+                                Text {
+                                    text: "Start with Windows";
+                                    font-size: 13px;
+                                    font-weight: 600;
+                                    color: Theme.text-primary;
+                                }
+
+                                Text {
+                                    text: "Launch minimized to system tray on login";
+                                    font-size: 11px;
+                                    color: Theme.text-tertiary;
+                                }
+                            }
+
+                            FluentToggle {
+                                checked: root.autostart-enabled;
+                                toggled(val) => { root.toggle-autostart(val); }
+                            }
+                        }
+                    }
+                }
+
+                // 2. Theme Selection Card
+                Rectangle {
+                    border-radius: Theme.radius-card;
+                    background: Theme.card-bg;
+                    border-width: 1px;
+                    border-color: Theme.card-border;
+
+                    VerticalLayout {
+                        padding: 14px;
+                        spacing: 10px;
+
+                        VerticalLayout {
+                            spacing: 2px;
+
+                            Text {
+                                text: "Theme";
+                                font-size: 13px;
+                                font-weight: 600;
+                                color: Theme.text-primary;
+                            }
+
+                            Text {
+                                text: "Select application color mode";
+                                font-size: 11px;
+                                color: Theme.text-tertiary;
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+
+                            // System
+                            Rectangle {
+                                horizontal-stretch: 1;
+                                height: 32px;
+                                border-radius: 6px;
+                                background: root.app-theme == "system" ? Theme.accent-subtle : (sys-touch.has-hover ? Theme.control-hover : Theme.control-bg);
+                                border-width: 1px;
+                                border-color: root.app-theme == "system" ? Theme.accent-border : Theme.card-border;
+                                animate background { duration: 100ms; }
+
+                                Text {
+                                    text: "System";
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    color: root.app-theme == "system" ? Theme.accent : Theme.text-secondary;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+
+                                Tooltip { text: @markdown("Follow Windows theme"); }
+
+                                sys-touch := TouchArea {
+                                    width: 100%;
+                                    height: 100%;
+                                    clicked => {
+                                        root.app-theme = "system";
+                                        root.theme-changed("system");
+                                    }
+                                }
+                            }
+
+                            // Dark
+                            Rectangle {
+                                horizontal-stretch: 1;
+                                height: 32px;
+                                border-radius: 6px;
+                                background: root.app-theme == "dark" ? Theme.accent-subtle : (dark-touch.has-hover ? Theme.control-hover : Theme.control-bg);
+                                border-width: 1px;
+                                border-color: root.app-theme == "dark" ? Theme.accent-border : Theme.card-border;
+                                animate background { duration: 100ms; }
+
+                                Text {
+                                    text: "Dark";
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    color: root.app-theme == "dark" ? Theme.accent : Theme.text-secondary;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+
+                                Tooltip { text: @markdown("Dark Mode Fluent Theme"); }
+
+                                dark-touch := TouchArea {
+                                    width: 100%;
+                                    height: 100%;
+                                    clicked => {
+                                        root.app-theme = "dark";
+                                        root.theme-changed("dark");
+                                    }
+                                }
+                            }
+
+                            // Light
+                            Rectangle {
+                                horizontal-stretch: 1;
+                                height: 32px;
+                                border-radius: 6px;
+                                background: root.app-theme == "light" ? Theme.accent-subtle : (light-touch.has-hover ? Theme.control-hover : Theme.control-bg);
+                                border-width: 1px;
+                                border-color: root.app-theme == "light" ? Theme.accent-border : Theme.card-border;
+                                animate background { duration: 100ms; }
+
+                                Text {
+                                    text: "Light";
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    color: root.app-theme == "light" ? Theme.accent : Theme.text-secondary;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+
+                                Tooltip { text: @markdown("Light Mode Fluent Theme"); }
+
+                                light-touch := TouchArea {
+                                    width: 100%;
+                                    height: 100%;
+                                    clicked => {
+                                        root.app-theme = "light";
+                                        root.theme-changed("light");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 3. About LumaTray Card
+                Rectangle {
+                    border-radius: Theme.radius-card;
+                    background: Theme.card-bg;
+                    border-width: 1px;
+                    border-color: Theme.card-border;
+
+                    VerticalLayout {
+                        padding: 14px;
+                        spacing: 8px;
+
+                        HorizontalLayout {
+                            cross-axis-alignment: center;
+
+                            Text {
+                                horizontal-stretch: 1;
+                                text: "LumaTray";
+                                font-size: 14px;
+                                font-weight: 700;
+                                color: Theme.text-primary;
+                            }
+
+                            Rectangle {
+                                height: 20px;
+                                border-radius: 4px;
+                                background: Theme.control-bg;
+                                border-width: 1px;
+                                border-color: Theme.card-border;
+
+                                HorizontalLayout {
+                                    padding-left: 6px;
+                                    padding-right: 6px;
+                                    cross-axis-alignment: center;
+
+                                    Text {
+                                        text: "v0.1.0";
+                                        font-size: 10px;
+                                        font-weight: 600;
+                                        color: Theme.text-secondary;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                            }
+                        }
+
+                        Text {
+                            text: "Ultra-lightweight native monitor brightness controller for Windows.";
+                            font-size: 11px;
+                            color: Theme.text-tertiary;
+                        }
+
+                        Rectangle {
+                            height: 1px;
+                            background: Theme.card-border;
+                        }
+
+                        Text {
+                            text: "github.com/lumatray";
+                            font-size: 11px;
+                            color: Theme.accent;
+                        }
+                    }
+                }
+            }
+
+            // ==================== MAIN FLYOUT VIEW ====================
+            if !root.show-settings : VerticalLayout {
+                spacing: 12px;
+
+                // Draggable Header Row
+                HorizontalLayout {
+                    spacing: 8px;
+                    cross-axis-alignment: center;
+
+                    // Title (Draggable)
+                    Rectangle {
+                        horizontal-stretch: 1;
+                        height: 30px;
+                        background: transparent;
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            cross-axis-alignment: center;
+
+                            SunIcon {
+                                icon-size: 18px;
+                                icon-color: Theme.accent;
+                            }
+
+                            Text {
+                                text: "LumaTray";
+                                font-size: 14px;
+                                font-weight: 700;
+                                color: Theme.text-primary;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        TouchArea {
+                            width: 100%;
+                            height: 100%;
+                            pointer-event(event) => {
+                                if (event.kind == PointerEventKind.down) {
+                                    root.drag-window();
+                                }
+                            }
+                        }
+                    }
+
+                    // Sync Master Pill (Visible ONLY when multiple displays exist)
+                    if root.displays.length > 1 : Rectangle {
+                        height: 30px;
+                        border-radius: 15px;
+                        background: root.sync-enabled ? Theme.accent-subtle : (sync-touch.has-hover ? Theme.control-hover : Theme.control-bg);
+                        border-width: 1px;
+                        border-color: root.sync-enabled ? Theme.accent-border : Theme.card-border;
+                        animate background { duration: 100ms; }
+
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            spacing: 6px;
+                            cross-axis-alignment: center;
+
+                            LinkIcon {
+                                icon-size: 13px;
+                                icon-color: root.sync-enabled ? Theme.accent : Theme.text-secondary;
+                            }
+
+                            Text {
+                                text: "Sync";
+                                font-size: 12px;
+                                font-weight: 600;
+                                color: root.sync-enabled ? Theme.accent : Theme.text-secondary;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        Tooltip { text: @markdown("Sync with other displays"); }
+
+                        sync-touch := TouchArea {
+                            width: 100%;
+                            height: 100%;
+                            clicked => { root.toggle-sync-master(); }
+                        }
+                    }
+
+                    // Refresh Button
+                    Rectangle {
+                        width: 30px;
+                        height: 30px;
+                        border-radius: Theme.radius-control;
+                        background: refresh-touch.has-hover ? Theme.control-hover : transparent;
+                        animate background { duration: 100ms; }
+
+                        RefreshIcon {
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                            icon-size: 15px;
+                            icon-color: refresh-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
+                        }
+
+                        Tooltip { text: @markdown("Refresh Displays"); }
+
+                        refresh-touch := TouchArea {
+                            width: 100%;
+                            height: 100%;
+                            clicked => { root.refresh-clicked(); }
+                        }
+                    }
+
+                    // Settings Button
+                    Rectangle {
+                        width: 30px;
+                        height: 30px;
+                        border-radius: Theme.radius-control;
+                        background: settings-touch.has-hover ? Theme.control-hover : transparent;
+                        animate background { duration: 100ms; }
+
+                        GearIcon {
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                            icon-size: 15px;
+                            icon-color: settings-touch.has-hover ? Theme.text-primary : Theme.text-secondary;
+                        }
+
+                        Tooltip { text: @markdown("Settings"); }
+
+                        settings-touch := TouchArea {
+                            width: 100%;
+                            height: 100%;
+                            clicked => { root.show-settings = true; }
+                        }
+                    }
+                }
+
+                // Master Synchronized Slider (Shown only when sync is active AND multiple displays exist)
+                if root.sync-enabled && root.displays.length > 1 : Rectangle {
+                    border-radius: Theme.radius-card;
+                    background: Theme.accent-subtle;
+                    border-width: 1px;
+                    border-color: Theme.accent-border;
+
+                    VerticalLayout {
+                        padding: 14px;
+                        spacing: 8px;
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            cross-axis-alignment: center;
+
+                            LinkIcon {
+                                icon-size: 14px;
+                                icon-color: Theme.accent;
+                            }
+
+                            Text {
+                                horizontal-stretch: 1;
+                                text: "All Displays";
+                                font-size: 12px;
+                                font-weight: 600;
+                                color: Theme.accent;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        HorizontalLayout {
+                            spacing: 8px;
+                            cross-axis-alignment: center;
+
+                            SunIcon {
+                                icon-size: 15px;
+                                icon-color: Theme.accent;
+                            }
+
+                            FluentSlider {
+                                horizontal-stretch: 1;
+                                value: root.master-brightness;
+                                minimum: 0;
+                                maximum: 100;
+                                changed(val) => {
+                                    root.master-brightness = val;
+                                    root.master-brightness-changed(val);
+                                }
+                                released(val) => {
+                                    root.master-brightness = val;
+                                    root.master-brightness-changed(val);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Per-Monitor Cards
+                VerticalLayout {
+                    spacing: 8px;
+
+                    for disp in root.displays: MonitorCard {
+                        display <=> disp;
+                        display-count: root.displays.length;
+                        sync-active: root.sync-enabled;
+                        brightness-changed(id, val) => {
+                            root.monitor-brightness-changed(id, val);
+                        }
+                        toggle-linked(id) => {
+                            root.toggle-monitor-link(id);
+                        }
+                    }
+                }
+
+                // Footer Status
+                HorizontalLayout {
+                    padding-top: 2px;
+
+                    Text {
+                        horizontal-stretch: 1;
+                        text: root.status-text;
+                        font-size: 11px;
+                        color: Theme.text-tertiary;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+        }
+    }
+}

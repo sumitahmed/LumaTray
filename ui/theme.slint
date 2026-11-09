@@ -1,0 +1,42 @@
+export global Theme {
+    in-out property <bool> is-dark: true;
+
+    // Window & Surface
+    in-out property <color> background: is-dark ? #202020 : #f3f3f3;
+    in-out property <color> card-bg: is-dark ? #ffffff0a : #ffffff;
+    in-out property <color> card-bg-hover: is-dark ? #2a2a2a : #f9f9f9;
+    in-out property <color> card-border: is-dark ? #ffffff14 : #00000010;
+    in-out property <color> flyout-border: is-dark ? #ffffff18 : #00000014;
+
+    // Typography Colors
+    in-out property <color> text-primary: is-dark ? #ffffff : #1a1a1a;
+    in-out property <color> text-secondary: is-dark ? #ffffffb3 : #5c5c5c;
+    in-out property <color> text-tertiary: is-dark ? #ffffff73 : #8a8a8a;
+    in-out property <color> text-disabled: is-dark ? #ffffff40 : #b0b0b0;
+
+    // Accent (Windows 11 Fluent Cyan / Blue)
+    in-out property <color> accent: is-dark ? #60cdff : #0067c0;
+    in-out property <color> accent-hover: is-dark ? #78d5ff : #1879cd;
+    in-out property <color> accent-pressed: is-dark ? #4cc2ff : #005fb8;
+    in-out property <color> accent-subtle: is-dark ? #60cdff26 : #0067c01a;
+    in-out property <color> accent-border: is-dark ? #60cdff80 : #0067c04d;
+
+    // Control Elements
+    in-out property <color> control-bg: is-dark ? #ffffff0f : #0000000a;
+    in-out property <color> control-hover: is-dark ? #ffffff1a : #00000014;
+    in-out property <color> control-active: is-dark ? #ffffff24 : #0000001f;
+    in-out property <color> slider-track: is-dark ? #ffffff33 : #00000026;
+    in-out property <color> slider-thumb: #ffffff;
+
+    // Badges
+    in-out property <color> badge-bg: is-dark ? #ffffff14 : #0000000d;
+    in-out property <color> badge-text: is-dark ? #ffffffa6 : #5c5c5c;
+    in-out property <color> badge-ddc-bg: is-dark ? #60cdff26 : #0067c01a;
+    in-out property <color> badge-ddc-text: is-dark ? #60cdff : #0067c0;
+
+    // Spacing & Radii
+    in-out property <length> radius-window: 10px;
+    in-out property <length> radius-card: 8px;
+    in-out property <length> radius-control: 6px;
+    in-out property <length> radius-pill: 20px;
+}

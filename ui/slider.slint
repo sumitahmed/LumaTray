@@ -1,0 +1,50 @@
+import { Slider } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+
+export component FluentSlider inherits Rectangle {
+    in-out property <int> value: 50;
+    in property <int> minimum: 0;
+    in property <int> maximum: 100;
+    in property <bool> enabled: true;
+
+    callback changed(int);
+    callback released(int);
+
+    height: 36px;
+    horizontal-stretch: 1;
+    min-width: 160px;
+    background: transparent;
+
+    HorizontalLayout {
+        spacing: 10px;
+        cross-axis-alignment: center;
+
+        slider := Slider {
+            horizontal-stretch: 1;
+            min-width: 120px;
+            enabled: root.enabled;
+            minimum: root.minimum;
+            maximum: root.maximum;
+            value: root.value;
+            changed(val) => {
+                root.value = Math.round(val);
+                root.changed(Math.round(val));
+            }
+            released(val) => {
+                root.value = Math.round(val);
+                root.released(Math.round(val));
+            }
+        }
+
+        // Value percentage label
+        Text {
+            width: 42px;
+            text: Math.round(slider.value) + "%";
+            color: !root.enabled ? Theme.text-disabled : Theme.text-primary;
+            font-size: 13px;
+            font-weight: 600;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+        }
+    }
+}
