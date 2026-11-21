@@ -2,7 +2,22 @@
 
 LumaTray is a native Windows 11 monitor brightness controller written in Rust and Slint. It runs in the system tray and controls external displays over DDC/CI and internal laptop panels over WMI without an Electron or WebView2 runtime.
 
-Repository: https://github.com/sumitahmed/LumaTray
+Repository: https://github.com/sumitahmed/LumaTray  
+Latest Release (`LumaTray.exe`): https://github.com/sumitahmed/LumaTray/releases/tag/v0.2.0
+
+## Preview
+
+### Tray Brightness Flyout & First-Run Walkthrough
+
+| Brightness Flyout | Tray-Pinning Walkthrough (`WelcomeWindow`) |
+| :---: | :---: |
+| ![LumaTray Brightness Flyout](docs/images/flyout-preview.png) | ![LumaTray Installation & Tray Pinning Walkthrough](docs/images/welcome-walkthrough.gif) |
+
+### Settings & Appearance
+
+| Appearance & Accent Colors | About & Installed Path |
+| :---: | :---: |
+| ![LumaTray Settings Appearance](docs/images/settings-appearance.png) | ![LumaTray Settings About](docs/images/settings-about.png) |
 
 ## Features
 
@@ -47,7 +62,7 @@ For full implementation details, module responsibilities, and threading diagrams
 
 ## Installation & Usage
 
-Download or build `LumaTray.exe` and run it directly:
+Download `LumaTray.exe` from the [v0.2.0 Release](https://github.com/sumitahmed/LumaTray/releases/tag/v0.2.0) (or build from source) and run it directly:
 
 1. On launch, LumaTray copies itself to `%LOCALAPPDATA%\Programs\LumaTray\LumaTray.exe` (if run from another folder) and creates a Start Menu shortcut at `%APPDATA%\Microsoft\Windows\Start Menu\Programs\LumaTray.lnk`.
 2. On first run, the "Hello, LumaTray!" walkthrough opens to show how to move the tray icon out of the Windows taskbar overflow menu.
