@@ -12,7 +12,7 @@ use crate::hal::descriptor::DriverType;
 use crate::platform::win32::autostart::{is_autostart_enabled, set_autostart};
 use crate::platform::win32::backdrop::{apply_fluent_backdrop, is_system_in_dark_mode, trim_working_set, BackdropType};
 use crate::platform::win32::flyout_hook::{hook_flyout_dismissal, notify_flyout_shown};
-use crate::platform::win32::installer::{installed_exe_path, open_external_url};
+use crate::platform::win32::installer::{installed_exe_path, is_running_from_install_dir, open_external_url};
 use crate::platform::win32::taskbar::calculate_flyout_anchor;
 
 slint::include_modules!();
@@ -62,7 +62,8 @@ impl UiBridge {
         bridge.sync_from_state();
 
         // Automatically show "Hello, LumaTray!" onboarding guide on first run
-        if !snapshot.config.first_run_completed {
+        // or whenever the user runs the standalone installer exe
+        if !snapshot.config.first_run_completed || !is_running_from_install_dir() {
             bridge.open_welcome();
         }
 
@@ -665,19 +666,33 @@ impl UiBridge {
             });
         }
 
+        let frame_counter = Rc::new(RefCell::new(0u32));
+        {
+            let fc = frame_counter.clone();
+            welcome.on_step_selected(move |step_idx| {
+                *fc.borrow_mut() = match step_idx {
+                    0 => 0,
+                    1 => 37,
+                    _ => 73,
+                };
+            });
+        }
+
         let _ = welcome.show();
         *self.welcome_window.borrow_mut() = Some(welcome);
 
-        // Step the 3-stage onboarding animation every 2.8s with zero idle GPU polling
+        // Drive the 20 FPS (50ms) 148-frame onboarding animation while WelcomeWindow is open
         let weak_for_timer = Rc::downgrade(self);
         self.welcome_timer.start(
             TimerMode::Repeated,
-            Duration::from_millis(2800),
+            Duration::from_millis(50),
             move || {
                 if let Some(bridge) = weak_for_timer.upgrade() {
                     if let Some(w) = bridge.welcome_window.borrow().as_ref() {
-                        let next_step = (w.get_active_step() + 1) % 3;
-                        w.set_active_step(next_step);
+                        let mut f_guard = frame_counter.borrow_mut();
+                        let f = *f_guard;
+                        *f_guard = (f + 1) % 148;
+                        update_welcome_animation_frame(w, f);
                     }
                 }
             },
@@ -770,6 +785,217 @@ fn resolve_is_dark(theme_pref: &str) -> bool {
         "light" => false,
         _ => is_system_in_dark_mode(),
     }
+}
+
+fn clamp01(v: f32) -> f32 {
+    v.clamp(0.0, 1.0)
+}
+
+fn lerp(a: f32, b: f32, t: f32) -> f32 {
+    a + (b - a) * t
+}
+
+fn ease_in_out(t: f32) -> f32 {
+    let t = clamp01(t);
+    if t < 0.5 {
+        4.0 * t * t * t
+    } else {
+        1.0 - (-2.0 * t + 2.0).powi(3) / 2.0
+    }
+}
+
+fn ease_out_cubic(t: f32) -> f32 {
+    let t = clamp01(t);
+    1.0 - (1.0 - t).powi(3)
+}
+
+fn quad_bezier(p0: (f32, f32), p1: (f32, f32), p2: (f32, f32), t: f32) -> (f32, f32) {
+    let u = 1.0 - t;
+    let x = u * u * p0.0 + 2.0 * u * t * p1.0 + t * t * p2.0;
+    let y = u * u * p0.1 + 2.0 * u * t * p1.1 + t * t * p2.1;
+    (x, y)
+}
+
+/// Updates all continuous properties of `WelcomeWindow` for frame `f` (0..148 @ 20 FPS = 7.4s loop).
+fn update_welcome_animation_frame(w: &WelcomeWindow, f: u32) {
+    let t = f as f32 / 20.0;
+    let global_prog = f as f32 / 147.0;
+
+    const CHEV_POS: (f32, f32) = (394.0, 336.0);
+    const OVERFLOW_LUMA: (f32, f32) = (431.0, 281.0);
+    const PIN_TARGET: (f32, f32) = (394.0, 336.0);
+
+    let mut step = 0;
+    let mut chev_hover = false;
+    let mut chev_open = false;
+    let mut overflow_alpha = 0.0f32;
+    let mut overflow_dy = 10.0f32;
+    let mut icon_in_overflow = true;
+    let mut icon_hover = false;
+    let mut dragging = false;
+    let mut drag_pos = OVERFLOW_LUMA;
+    let mut pinned_slot_t = 0.0f32;
+    let mut icon_pinned = false;
+    let mut tray_active = false;
+    let mut flyout_alpha = 0.0f32;
+    let mut flyout_dy = 12.0f32;
+    let mut b1 = 65.0f32;
+    let mut b2 = 40.0f32;
+    let mut active_slider = 0;
+    let mut cursor_pressed = false;
+    let mut ripple = 0.0f32;
+    let (cx, cy);
+
+    if t < 0.7 {
+        let p = ease_in_out(t / 0.7);
+        cx = lerp(260.0, CHEV_POS.0, p);
+        cy = lerp(200.0, CHEV_POS.1, p);
+        chev_hover = p > 0.75;
+    } else if t < 1.0 {
+        cx = CHEV_POS.0;
+        cy = CHEV_POS.1;
+        chev_hover = true;
+        chev_open = true;
+        cursor_pressed = t < 0.84;
+        ripple = clamp01((t - 0.7) / 0.35);
+        let pop_p = ease_out_cubic((t - 0.72) / 0.28);
+        overflow_alpha = pop_p;
+        overflow_dy = lerp(10.0, 0.0, pop_p);
+    } else if t < 1.85 {
+        chev_open = true;
+        overflow_alpha = 1.0;
+        overflow_dy = 0.0;
+        let p = ease_in_out((t - 1.0) / 0.65);
+        cx = lerp(CHEV_POS.0, OVERFLOW_LUMA.0, p);
+        cy = lerp(CHEV_POS.1, OVERFLOW_LUMA.1, p);
+        icon_hover = p > 0.78;
+    } else if t < 3.15 {
+        step = 1;
+        chev_open = true;
+        overflow_alpha = 1.0;
+        overflow_dy = 0.0;
+        icon_in_overflow = false;
+        dragging = true;
+        cursor_pressed = true;
+        let p = ease_in_out((t - 1.85) / 1.15);
+        let mid = (OVERFLOW_LUMA.0 + 28.0, (OVERFLOW_LUMA.1 + PIN_TARGET.1) / 2.0);
+        let pos = quad_bezier(OVERFLOW_LUMA, mid, PIN_TARGET, p);
+        cx = pos.0;
+        cy = pos.1;
+        drag_pos = pos;
+        pinned_slot_t = clamp01((p - 0.35) / 0.55);
+        if t > 3.0 {
+            dragging = false;
+            cursor_pressed = false;
+            icon_pinned = true;
+            pinned_slot_t = 1.0;
+            ripple = clamp01((t - 3.0) / 0.35);
+        }
+    } else if t < 3.65 {
+        step = 1;
+        icon_pinned = true;
+        pinned_slot_t = 1.0;
+        cx = PIN_TARGET.0;
+        cy = PIN_TARGET.1;
+        let fade = 1.0 - ease_in_out((t - 3.15) / 0.32);
+        overflow_alpha = fade;
+        overflow_dy = lerp(0.0, 8.0, 1.0 - fade);
+        chev_open = fade > 0.2;
+        ripple = clamp01((t - 3.0) / 0.35);
+    } else {
+        step = 2;
+        icon_pinned = true;
+        pinned_slot_t = 1.0;
+        tray_active = true;
+
+        if t < 4.05 {
+            cx = PIN_TARGET.0;
+            cy = PIN_TARGET.1;
+            cursor_pressed = t < 3.80;
+            ripple = clamp01((t - 3.65) / 0.35);
+            let fp = ease_out_cubic((t - 3.68) / 0.34);
+            flyout_alpha = fp;
+            flyout_dy = lerp(12.0, 0.0, fp);
+        } else {
+            flyout_alpha = 1.0;
+            flyout_dy = 0.0;
+            // Slider geometry inside 540x356 stage
+            let fx = 540.0 - 292.0 - 14.0;
+            let fy = 356.0 - 40.0 - 214.0 - 10.0;
+            let tx1 = fx + 12.0 + 10.0 + 20.0;
+            let tx2 = fx + 292.0 - 12.0 - 10.0 - 38.0;
+            let s1_y = fy + 40.0 + 48.0;
+            let s2_y = fy + 116.0 + 48.0;
+
+            if t < 4.65 {
+                let p = ease_in_out((t - 4.05) / 0.55);
+                let target_x = tx1 + (tx2 - tx1) * 0.65;
+                cx = lerp(PIN_TARGET.0, target_x, p);
+                cy = lerp(PIN_TARGET.1, s1_y, p);
+            } else if t < 5.45 {
+                let p = ease_in_out((t - 4.65) / 0.75);
+                b1 = lerp(65.0, 25.0, p);
+                active_slider = 1;
+                cursor_pressed = true;
+                cx = tx1 + (tx2 - tx1) * (b1 / 100.0);
+                cy = s1_y;
+            } else if t < 6.25 {
+                let p = ease_in_out((t - 5.45) / 0.75);
+                b1 = lerp(25.0, 88.0, p);
+                active_slider = 1;
+                cursor_pressed = true;
+                cx = tx1 + (tx2 - tx1) * (b1 / 100.0);
+                cy = s1_y;
+            } else if t < 6.60 {
+                b1 = 88.0;
+                let p = ease_in_out((t - 6.25) / 0.35);
+                let sx_prev = tx1 + (tx2 - tx1) * 0.88;
+                let sx_next = tx1 + (tx2 - tx1) * 0.40;
+                cx = lerp(sx_prev, sx_next, p);
+                cy = lerp(s1_y, s2_y, p);
+            } else if t < 7.15 {
+                b1 = 88.0;
+                let p = ease_in_out((t - 6.60) / 0.50);
+                b2 = lerp(40.0, 78.0, p);
+                active_slider = 2;
+                cursor_pressed = true;
+                cx = tx1 + (tx2 - tx1) * (b2 / 100.0);
+                cy = s2_y;
+            } else {
+                b1 = 88.0;
+                b2 = 78.0;
+                cx = tx1 + (tx2 - tx1) * 0.78;
+                cy = s2_y;
+            }
+        }
+    }
+
+    let dim = lerp(0.45, 0.0, clamp01(b1 / 100.0));
+
+    w.set_active_step(step);
+    w.set_global_progress(global_prog);
+    w.set_cursor_x(cx);
+    w.set_cursor_y(cy);
+    w.set_cursor_pressed(cursor_pressed);
+    w.set_ripple_progress(ripple);
+    w.set_chev_hover(chev_hover);
+    w.set_chev_open(chev_open);
+    w.set_overflow_alpha(overflow_alpha);
+    w.set_overflow_dy(overflow_dy);
+    w.set_icon_in_overflow(icon_in_overflow);
+    w.set_icon_hover(icon_hover);
+    w.set_dragging(dragging);
+    w.set_drag_x(drag_pos.0);
+    w.set_drag_y(drag_pos.1);
+    w.set_pinned_slot_t(pinned_slot_t);
+    w.set_icon_pinned(icon_pinned);
+    w.set_tray_active(tray_active);
+    w.set_flyout_alpha(flyout_alpha);
+    w.set_flyout_dy(flyout_dy);
+    w.set_b1(b1.round() as i32);
+    w.set_b2(b2.round() as i32);
+    w.set_active_slider(active_slider);
+    w.set_wallpaper_dim(dim);
 }
 
 /// Flushes one-time GPU shader compiler & layout pages out of the process working set

@@ -107,6 +107,16 @@ pub fn ensure_installed() -> PathBuf {
     active_exe
 }
 
+/// Returns true if the current process is executing directly from the canonical
+/// `%LOCALAPPDATA%\Programs\LumaTray\LumaTray.exe` installation directory.
+pub fn is_running_from_install_dir() -> bool {
+    if let Ok(curr) = env::current_exe() {
+        paths_equal(&curr, &installed_exe_path())
+    } else {
+        false
+    }
+}
+
 fn paths_equal(a: &Path, b: &Path) -> bool {
     a.to_string_lossy()
         .eq_ignore_ascii_case(&b.to_string_lossy())

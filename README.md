@@ -15,9 +15,9 @@ Latest Release (`LumaTray.exe`): https://github.com/sumitahmed/LumaTray/releases
 
 ### Settings & Appearance
 
-| Appearance & Accent Colors | About & Installed Path |
-| :---: | :---: |
-| ![LumaTray Settings Appearance](docs/images/settings-appearance.png) | ![LumaTray Settings About](docs/images/settings-about.png) |
+| Appearance & Accent Colors (Dark Mode) | Appearance & Accent Colors (Light Mode) | About & Installed Path |
+| :---: | :---: | :---: |
+| ![LumaTray Settings Dark Mode](docs/images/settings-appearance.png) | ![LumaTray Settings Light Mode](docs/images/settings-light.png) | ![LumaTray Settings About](docs/images/settings-about.png) |
 
 ### Memory Footprint (`0.4 MB` in Windows Task Manager)
 
