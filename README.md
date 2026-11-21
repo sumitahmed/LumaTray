@@ -1,5 +1,9 @@
 # LumaTray
 
+[![Download LumaTray.exe](https://img.shields.io/badge/Download-LumaTray.exe_(Windows_x64)-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/sumitahmed/LumaTray/releases/latest/download/LumaTray.exe)
+[![Total Downloads](https://img.shields.io/github/downloads/sumitahmed/LumaTray/total?style=for-the-badge&label=Downloads&color=2ea44f)](https://github.com/sumitahmed/LumaTray/releases)
+[![Latest Release](https://img.shields.io/github/v/release/sumitahmed/LumaTray?style=for-the-badge&color=60cdff)](https://github.com/sumitahmed/LumaTray/releases/latest)
+
 LumaTray is a native Windows 11 monitor brightness controller written in Rust and Slint. It runs in the system tray and controls external displays over DDC/CI and internal laptop panels over WMI without an Electron or WebView2 runtime.
 
 Repository: https://github.com/sumitahmed/LumaTray  
