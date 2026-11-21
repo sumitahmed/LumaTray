@@ -1,3 +1,4 @@
+use windows::core::PCWSTR;
 use windows::Win32::Devices::Display::{
     GetDisplayConfigBufferSizes,
     QueryDisplayConfig,
@@ -11,7 +12,40 @@ use windows::Win32::Devices::Display::{
     QDC_ONLY_ACTIVE_PATHS,
 };
 use windows::Win32::Foundation::WIN32_ERROR;
+use windows::Win32::Graphics::Gdi::{EnumDisplaySettingsW, DEVMODEW, ENUM_CURRENT_SETTINGS};
 use tracing::{debug, warn};
+
+/// Queries the live active resolution (e.g. "1920 × 1080") and refresh rate in Hz (e.g. 100)
+/// for a given GDI display device (such as "\\.\DISPLAY1").
+pub fn query_gdi_display_mode(gdi_device_name: &str) -> (String, u32) {
+    unsafe {
+        let mut devmode: DEVMODEW = std::mem::zeroed();
+        devmode.dmSize = std::mem::size_of::<DEVMODEW>() as u16;
+
+        let wide_name: Vec<u16> = gdi_device_name
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+
+        let ok = if gdi_device_name.is_empty() || gdi_device_name == "InternalPanel" {
+            EnumDisplaySettingsW(PCWSTR::null(), ENUM_CURRENT_SETTINGS, &mut devmode).as_bool()
+        } else {
+            EnumDisplaySettingsW(PCWSTR(wide_name.as_ptr()), ENUM_CURRENT_SETTINGS, &mut devmode).as_bool()
+        };
+
+        if ok && devmode.dmPelsWidth > 0 && devmode.dmPelsHeight > 0 {
+            let res = format!("{} × {}", devmode.dmPelsWidth, devmode.dmPelsHeight);
+            let hz = if devmode.dmDisplayFrequency > 1 {
+                devmode.dmDisplayFrequency
+            } else {
+                60
+            };
+            (res, hz)
+        } else {
+            ("1920 × 1080".to_string(), 60)
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]

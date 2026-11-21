@@ -34,6 +34,7 @@ pub enum HardwareCommand {
         id: String,
         reply: Sender<Result<u32, DriverError>>,
     },
+    SetThrottleInterval(Duration),
     FlushPending,
     Shutdown,
 }
@@ -136,6 +137,10 @@ impl HardwareWorker {
                     self.flush_pending_for_id(&id);
                     let res = self.driver.get_brightness(&id);
                     let _ = reply.send(res);
+                }
+                Ok(HardwareCommand::SetThrottleInterval(interval)) => {
+                    info!("Updated HardwareWorker throttle interval to {:?}", interval);
+                    self.coalescer.set_interval(interval);
                 }
                 Ok(HardwareCommand::FlushPending) => {
                     self.flush_all_pending();
@@ -285,6 +290,11 @@ impl HardwareWorkerHandle {
         reply_rx
             .recv()
             .map_err(|e| DriverError::Internal(format!("Worker reply failed: {:?}", e)))?
+    }
+
+    /// Updates the write coalescer throttle interval dynamically.
+    pub fn set_throttle_interval(&self, interval: Duration) {
+        let _ = self.sender.send(HardwareCommand::SetThrottleInterval(interval));
     }
 
     /// Flushes all pending writes immediately.

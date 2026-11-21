@@ -8,11 +8,14 @@ use tracing::{debug, error, info, warn};
 use super::sync_engine::PiecewiseCurve;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct DisplayConfig {
     pub friendly_name: Option<String>,
     pub is_linked: bool,
     pub min_brightness: u32,
     pub max_brightness: u32,
+    pub saved_brightness: Option<u32>,
+    pub saved_contrast: Option<u32>,
     pub custom_curve: Option<PiecewiseCurve>,
     pub show_contrast: bool,
 }
@@ -24,30 +27,43 @@ impl Default for DisplayConfig {
             is_linked: true,
             min_brightness: 0,
             max_brightness: 100,
+            saved_brightness: None,
+            saved_contrast: None,
             custom_curve: None,
-            show_contrast: true,
+            show_contrast: false,
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct AppConfig {
+    pub first_run_completed: bool,
     pub start_with_windows: bool,
+    pub restore_brightness_on_startup: bool,
     pub sync_enabled: bool,
     pub master_brightness: u32,
     pub throttle_ms: u64,
     pub hotkeys_enabled: bool,
+    pub app_theme: String,
+    pub accent_color: String,
+    pub backdrop_style: String,
     pub displays: HashMap<String, DisplayConfig>,
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            start_with_windows: false,
+            first_run_completed: false,
+            start_with_windows: true,
+            restore_brightness_on_startup: true,
             sync_enabled: false,
             master_brightness: 75,
             throttle_ms: 50,
             hotkeys_enabled: true,
+            app_theme: "system".to_string(),
+            accent_color: "cyan".to_string(),
+            backdrop_style: "acrylic".to_string(),
             displays: HashMap::new(),
         }
     }

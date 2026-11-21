@@ -24,7 +24,7 @@ use windows::Win32::Graphics::Gdi::{
 
 use crate::hal::descriptor::{DisplayCapabilities, DisplayDescriptor, DriverType};
 use crate::hal::error::DriverError;
-use super::display_config::{get_display_config_targets, DisplayConfigTarget};
+use super::display_config::{get_display_config_targets, query_gdi_display_mode, DisplayConfigTarget};
 
 pub struct SafePhysicalHandle(pub HANDLE);
 
@@ -289,10 +289,14 @@ impl WindowsDdcCiDriver {
                     supported_vcp_codes: vec![vcp_code],
                 };
 
+                let (resolution, refresh_rate_hz) = query_gdi_display_mode(&gdi_name);
+
                 let descriptor = DisplayDescriptor {
                     id: target_id.clone(),
                     name: display_name,
                     gdi_name: gdi_name.clone(),
+                    resolution,
+                    refresh_rate_hz,
                     driver_type: DriverType::DdcCi,
                     is_internal: false,
                     capabilities,

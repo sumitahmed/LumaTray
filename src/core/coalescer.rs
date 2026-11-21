@@ -41,6 +41,10 @@ impl WriteCoalescer {
         }
     }
 
+    pub fn set_interval(&mut self, interval: Duration) {
+        self.interval = interval;
+    }
+
     /// Submits a new value. Returns whether to execute immediately or defer.
     pub fn submit(&mut self, key: ThrottleKey, value: u32) -> CoalesceAction {
         let now = Instant::now();

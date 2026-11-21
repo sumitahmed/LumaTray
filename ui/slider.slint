@@ -1,4 +1,3 @@
-import { Slider } from "std-widgets.slint";
 import { Theme } from "theme.slint";
 
 export component FluentSlider inherits Rectangle {
@@ -6,40 +5,137 @@ export component FluentSlider inherits Rectangle {
     in property <int> minimum: 0;
     in property <int> maximum: 100;
     in property <bool> enabled: true;
+    in property <string> suffix: "%";
 
     callback changed(int);
     callback released(int);
 
-    height: 36px;
+    height: 34px;
     horizontal-stretch: 1;
-    min-width: 160px;
+    min-width: 80px;
     background: transparent;
 
+    property <float> range: Math.max(1, root.maximum - root.minimum);
+    property <float> progress: Math.clamp((root.value - root.minimum) / root.range, 0.0, 1.0);
+
     HorizontalLayout {
-        spacing: 10px;
+        width: 100%;
+        height: 100%;
+        spacing: 12px;
         cross-axis-alignment: center;
 
-        slider := Slider {
+        track-container := Rectangle {
             horizontal-stretch: 1;
-            min-width: 120px;
-            enabled: root.enabled;
-            minimum: root.minimum;
-            maximum: root.maximum;
-            value: root.value;
-            changed(val) => {
-                root.value = Math.round(val);
-                root.changed(Math.round(val));
+            min-width: 60px;
+            height: 30px;
+            background: transparent;
+
+            // Unfilled Track Groove
+            Rectangle {
+                x: 0px;
+                y: (parent.height - self.height) / 2;
+                width: parent.width;
+                height: touch.has-hover || touch.pressed ? 6px : 4px;
+                border-radius: self.height / 2;
+                background: Theme.slider-track;
+                animate height { duration: 100ms; }
             }
-            released(val) => {
-                root.value = Math.round(val);
-                root.released(Math.round(val));
+
+            // Active Accent Fill Bar
+            Rectangle {
+                x: 0px;
+                y: (parent.height - self.height) / 2;
+                width: Math.max(4px, parent.width * root.progress);
+                height: touch.has-hover || touch.pressed ? 6px : 4px;
+                border-radius: self.height / 2;
+                background: root.enabled ? (touch.has-hover ? Theme.accent-hover : Theme.accent) : Theme.text-disabled;
+                animate height { duration: 100ms; }
+            }
+
+            // Windows 11 Fluent Thumb (Outer Ring + Animated Inner Accent Dot)
+            thumb := Rectangle {
+                x: Math.clamp(parent.width * root.progress - self.width / 2, 0px, Math.max(0px, parent.width - self.width));
+                y: (parent.height - self.height) / 2;
+                width: 20px;
+                height: 20px;
+                border-radius: 10px;
+                background: Theme.is-dark ? #2d2d2d : #ffffff;
+                border-width: 1px;
+                border-color: Theme.is-dark ? #ffffff33 : #0000002e;
+
+                // Inner Fluent Accent Circle
+                Rectangle {
+                    property <length> dot-size: touch.pressed ? 9px : (touch.has-hover ? 13px : 11px);
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                    width: self.dot-size;
+                    height: self.dot-size;
+                    border-radius: self.dot-size / 2;
+                    background: root.enabled ? (touch.has-hover ? Theme.accent-hover : Theme.accent) : Theme.text-disabled;
+                    animate width, height { duration: 110ms; easing: ease-out; }
+                }
+            }
+
+            touch := TouchArea {
+                width: 100%;
+                height: 100%;
+                enabled: root.enabled;
+                mouse-cursor: pointer;
+
+                pointer-event(event) => {
+                    if (!root.enabled) {
+                        return;
+                    }
+                    if (event.kind == PointerEventKind.down) {
+                        let ratio = Math.clamp(self.mouse-x / self.width, 0.0, 1.0);
+                        let next-val = Math.round(root.minimum + ratio * (root.maximum - root.minimum));
+                        root.value = next-val;
+                        root.changed(next-val);
+                    } else if (event.kind == PointerEventKind.move && self.pressed) {
+                        let ratio = Math.clamp(self.mouse-x / self.width, 0.0, 1.0);
+                        let next-val = Math.round(root.minimum + ratio * (root.maximum - root.minimum));
+                        if (next-val != root.value) {
+                            root.value = next-val;
+                            root.changed(next-val);
+                        }
+                    } else if (event.kind == PointerEventKind.up) {
+                        root.released(root.value);
+                    }
+                }
+
+                moved => {
+                    if (root.enabled && self.pressed) {
+                        let ratio = Math.clamp(self.mouse-x / self.width, 0.0, 1.0);
+                        let next-val = Math.round(root.minimum + ratio * (root.maximum - root.minimum));
+                        if (next-val != root.value) {
+                            root.value = next-val;
+                            root.changed(next-val);
+                        }
+                    }
+                }
+
+                scroll-event(event) => {
+                    if (!root.enabled) {
+                        return EventResult.reject;
+                    }
+                    let step = event.delta-y > 0px ? 2 : (event.delta-y < 0px ? -2 : 0);
+                    if (step != 0) {
+                        let next-val = Math.clamp(root.value + step, root.minimum, root.maximum);
+                        if (next-val != root.value) {
+                            root.value = next-val;
+                            root.changed(next-val);
+                        }
+                        return EventResult.accept;
+                    }
+                    return EventResult.reject;
+                }
             }
         }
 
-        // Value percentage label
+        // Value Label
         Text {
             width: 42px;
-            text: Math.round(slider.value) + "%";
+            text: root.value + root.suffix;
             color: !root.enabled ? Theme.text-disabled : Theme.text-primary;
             font-size: 13px;
             font-weight: 600;

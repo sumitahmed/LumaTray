@@ -1,6 +1,13 @@
 use std::process::Command;
 
 fn main() {
+    println!("cargo:rerun-if-changed=ui/main.slint");
+    println!("cargo:rerun-if-changed=ui/settings.slint");
+    println!("cargo:rerun-if-changed=ui/welcome.slint");
+    println!("cargo:rerun-if-changed=ui/monitor_card.slint");
+    println!("cargo:rerun-if-changed=ui/slider.slint");
+    println!("cargo:rerun-if-changed=ui/theme.slint");
+    println!("cargo:rerun-if-changed=ui/icons.slint");
     slint_build::compile("ui/main.slint").unwrap();
 
     #[cfg(target_os = "windows")]

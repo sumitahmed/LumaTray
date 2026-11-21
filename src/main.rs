@@ -49,7 +49,12 @@ fn main() {
         error!("PANIC OCCURRED: {:?}", info);
     }));
 
-    info!("LumaTray v0.1.0 starting");
+    info!("LumaTray v0.2.0 starting");
+
+    // 0. Ensure LumaTray is installed in %LOCALAPPDATA%\Programs\LumaTray\LumaTray.exe
+    //    and registered as an official Windows App in Start Menu Programs (.lnk)
+    let installed_path = luma_tray::platform::win32::ensure_installed();
+    info!("Verified Windows App installation at {:?}", installed_path);
 
     // 1. Initialize composite Hardware Driver (DDC/CI + WMI)
     let driver = Box::new(WindowsDisplayManager::new());
@@ -61,12 +66,23 @@ fn main() {
     let descriptors = worker.enumerate().unwrap_or_default();
     info!("{} display(s) detected", descriptors.len());
     for desc in &descriptors {
-        info!(" -> [{}] {} ({:?})", desc.id, desc.name, desc.driver_type);
+        info!(
+            " -> [{}] {} ({:?}, {} @ {} Hz)",
+            desc.id, desc.name, desc.driver_type, desc.resolution, desc.refresh_rate_hz
+        );
     }
 
-    // 4. Initialize Core StateStore
+    // 4. Initialize Core StateStore & self-heal Windows Autostart registry path
     let state_store = Arc::new(StateStore::new(worker.clone()));
     state_store.update_inventory(descriptors);
+    let autostart_active = luma_tray::platform::win32::sync_autostart_on_boot(
+        state_store.snapshot().config.start_with_windows,
+    );
+    if autostart_active && !state_store.snapshot().config.start_with_windows {
+        state_store.update_preferences(|cfg| {
+            cfg.start_with_windows = true;
+        });
+    }
 
     // 5. Initialize Power Supervisor (sleep/wake storm suppressor)
     let power_supervisor = Arc::new(PowerSupervisor::new());

@@ -35,6 +35,7 @@ use windows::Win32::System::Wmi::{
 
 use crate::hal::descriptor::{DisplayCapabilities, DisplayDescriptor, DriverType};
 use crate::hal::error::DriverError;
+use super::display_config::{get_display_config_targets, query_gdi_display_mode};
 
 pub struct WmiDisplayEntry {
     pub descriptor: DisplayDescriptor,
@@ -274,11 +275,24 @@ impl WindowsWmiDriver {
 
                     let wmi_path = method_paths.get(&instance).cloned();
 
+                    // Match WMI instance hardware ID against DisplayConfig targets to get real GDI name
+                    let hw_code = instance.split('\\').nth(1).unwrap_or("").to_uppercase();
+                    let targets = get_display_config_targets();
+                    let matched_gdi = targets
+                        .iter()
+                        .find(|t| !hw_code.is_empty() && t.device_path.to_uppercase().contains(&hw_code))
+                        .map(|t| t.gdi_device_name.clone())
+                        .unwrap_or_else(|| "InternalPanel".to_string());
+
+                    let (resolution, refresh_rate_hz) = query_gdi_display_mode(&matched_gdi);
+
                     let id = format!("WMI\\{}", instance);
                     let descriptor = DisplayDescriptor {
                         id: id.clone(),
                         name: friendly,
-                        gdi_name: "InternalPanel".to_string(),
+                        gdi_name: matched_gdi,
+                        resolution,
+                        refresh_rate_hz,
                         driver_type: DriverType::WmiInternal,
                         is_internal: true,
                         capabilities: DisplayCapabilities {

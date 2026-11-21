@@ -1,7 +1,7 @@
 use std::mem::size_of;
 use tracing::{debug, warn};
-use windows::core::BOOL;
-use windows::Win32::Foundation::HWND;
+use windows::core::{BOOL, PCWSTR};
+use windows::Win32::Foundation::{HINSTANCE, HWND, LPARAM, WPARAM};
 use windows::Win32::Graphics::Dwm::{
     DwmSetWindowAttribute,
     DWMWA_SYSTEMBACKDROP_TYPE,
@@ -12,6 +12,11 @@ use windows::Win32::Graphics::Dwm::{
     DWMSBT_MAINWINDOW,
     DWMSBT_TRANSIENTWINDOW,
     DWMWCP_ROUND,
+};
+use windows::Win32::System::LibraryLoader::GetModuleHandleW;
+use windows::Win32::UI::WindowsAndMessaging::{
+    GetSystemMetrics, LoadImageW, SendMessageW, ICON_BIG, ICON_SMALL, IMAGE_ICON, LR_DEFAULTCOLOR,
+    LR_SHARED, SM_CXICON, SM_CXSMICON, SM_CYICON, SM_CYSMICON, WM_SETICON,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,8 +62,52 @@ pub fn is_system_in_dark_mode() -> bool {
     true // Default to Dark mode for sleek aesthetics
 }
 
-/// Applies Windows 11 DWM Mica or Acrylic backdrop and rounded corners to the flyout window.
+/// Assigns the embedded LumaTray executable icon (Resource ID 1) to a window's titlebar and taskbar slot.
+pub fn apply_window_icon(hwnd: HWND) {
+    unsafe {
+        if let Ok(hinstance) = GetModuleHandleW(None) {
+            let cx_sm = GetSystemMetrics(SM_CXSMICON);
+            let cy_sm = GetSystemMetrics(SM_CYSMICON);
+            if let Ok(hicon_sm) = LoadImageW(
+                Some(HINSTANCE(hinstance.0)),
+                PCWSTR(1 as *const u16),
+                IMAGE_ICON,
+                cx_sm,
+                cy_sm,
+                LR_DEFAULTCOLOR | LR_SHARED,
+            ) {
+                let _ = SendMessageW(
+                    hwnd,
+                    WM_SETICON,
+                    Some(WPARAM(ICON_SMALL as usize)),
+                    Some(LPARAM(hicon_sm.0 as isize)),
+                );
+            }
+
+            let cx_big = GetSystemMetrics(SM_CXICON);
+            let cy_big = GetSystemMetrics(SM_CYICON);
+            if let Ok(hicon_big) = LoadImageW(
+                Some(HINSTANCE(hinstance.0)),
+                PCWSTR(1 as *const u16),
+                IMAGE_ICON,
+                cx_big,
+                cy_big,
+                LR_DEFAULTCOLOR | LR_SHARED,
+            ) {
+                let _ = SendMessageW(
+                    hwnd,
+                    WM_SETICON,
+                    Some(WPARAM(ICON_BIG as usize)),
+                    Some(LPARAM(hicon_big.0 as isize)),
+                );
+            }
+        }
+    }
+}
+
+/// Applies Windows 11 DWM Mica or Acrylic backdrop, rounded corners, and embedded window icon.
 pub fn apply_fluent_backdrop(hwnd: HWND, backdrop: BackdropType, dark_mode: bool) {
+    apply_window_icon(hwnd);
     unsafe {
         // 1. Dark Mode Immersive Theme
         let dark_val = BOOL(if dark_mode { 1 } else { 0 });
