@@ -19,6 +19,10 @@ Latest Release (`LumaTray.exe`): https://github.com/sumitahmed/LumaTray/releases
 | :---: | :---: |
 | ![LumaTray Settings Appearance](docs/images/settings-appearance.png) | ![LumaTray Settings About](docs/images/settings-about.png) |
 
+### Memory Footprint (`0.4 MB` in Windows Task Manager)
+
+![LumaTray 0.4 MB Memory Footprint in Windows Task Manager](docs/images/task-manager-lumatray.png)
+
 ## Features
 
 - **Hardware Display Control**
