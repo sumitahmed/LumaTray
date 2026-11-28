@@ -108,5 +108,8 @@ cargo test
 
 If this project is useful to you, you can support its continued development.
 
-- Use the **Sponsor** button at the top of this repository to sponsor through GitHub.
-- [Buy Me a Coffee](https://buymeacoffee.com/sumitahmed)
+If you'd like to support ongoing development, you can buy me a coffee:
+
+<a href="https://buymeacoffee.com/sumitahmed" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me a Coffee" height="60" width="217" />
+</a>
