@@ -106,13 +106,7 @@ cargo test
 
 ## Support the project
 
-If this project is useful to you, consider supporting its continued development.
+If this project is useful to you, you can support its continued development.
 
-<p>
-  <a href="https://github.com/sponsors/sumitahmed">
-    <img src="https://img.shields.io/badge/GitHub_Sponsors-Sponsor_this_project-DB61A2?style=for-the-badge&logo=githubsponsors&logoColor=white" alt="GitHub Sponsors" />
-  </a>
-  <a href="https://buymeacoffee.com/sumitahmed">
-    <img src="https://img.shields.io/badge/Buy_Me_a_Coffee-Support_development-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=black" alt="Buy Me a Coffee" />
-  </a>
-</p>
+- Use the **Sponsor** button at the top of this repository to sponsor through GitHub.
+- [Buy Me a Coffee](https://buymeacoffee.com/sumitahmed)
